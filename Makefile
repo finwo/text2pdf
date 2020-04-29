@@ -1,64 +1,35 @@
-#========================================================================
-# Makefile for text2pdf by Nelson Beebe
-# NB: This program requires an ANSI/ISO Standard C compiler, such as
-# GNU gcc.
-#
-# The ".pok" file is a PDF file produced with
-# "text2pdf text2pdf.c > text2pdf.pok" on some master system.  Subsequent
-# installations can be verified against this file using "make check".
-# Nelson recommends using "make all check install".
-#
-# [16-Oct-1996]
-#========================================================================
+include config.mk
 
-# Change this to suit local customs
-BINDIR		= /usr/local/bin
+BIN =\
+		 text2pdf
 
-# The rest of this Makefile should not require changes on any UNIX system
-CHMOD		= /bin/chmod
+SRC = $(BIN:=.c)
+OBJ = $(BIN:=.o)
+MAN = $(BIN:=.1)
 
-DIFF		= /bin/diff
+all: $(BIN)
 
-CP		= /bin/cp
+$(BIN): $(LIB) $(OBJ)
 
-RM		= /bin/rm -f
+.o:
+	$(CC) $(LDFLAGS) -o $@ $< $(LIB)
 
-PROGRAM		= text2pdf
+.c.o:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
-SHELL		= /bin/sh
 
-#========================================================================
-
-all:	$(PROGRAM)
-
-check:	$(PROGRAM) $(PROGRAM).pdf
-	@echo "The only differences should be in the /CreationDate lines"
-	-$(DIFF) $(PROGRAM).pdf $(PROGRAM).pok
-
-clean mostlyclean:
-	-$(RM) *.i
-	-$(RM) *.o
-	-$(RM) *~
-	-$(RM) \#*
-	-$(RM) a.out
-	-$(RM) core
-
-clobber distclean:	clean
-	-$(RM) $(PROGRAM)
-	-$(RM) $(PROGRAM).pdf
-
-install:	all uninstall
-	$(CP) $(PROGRAM) $(BINDIR)/$(PROGRAM)
-	$(CHMOD) 775 $(BINDIR)/$(PROGRAM)
-
-maintainer-clean:	distclean
-	@echo "This command is intended for maintainers to use;"
-	@echo "it deletes files that may require special tools to rebuild."
-	-$(RM) $(PROGRAM).pok
-
-$(PROGRAM).pdf:	$(PROGRAM).c $(PROGRAM)
-	./$(PROGRAM) $(PROGRAM).c >$(PROGRAM).pdf
+install: all
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	cp -f $(BIN) $(DESTDIR)$(PREFIX)/bin
+	cd $(DESTDIR)$(PREFIX)/bin && chmod 755 $(BIN)
+	mkdir -p $(DESTDIR)$(MANPREFIX)/man1
+	for m in $(MAN); do sed "s/{{VERSION}}/$(VERSION)/g" < "$$m" > $(DESTDIR)$(MANPREFIX)/man1/"$$m"; done
+	cd $(DESTDIR)$(MANPREFIX)/man1 && chmod 644 $(MAN)
 
 uninstall:
-	-$(RM) $(BINDIR)/$(PROGRAM)
+	for b in $(BIN); do rm -f $(DESTDIR)$(PREFIX)/bin/"$$b"; done
+	for m in $(MAN); do rm -f $(DESTDIR)$(MANPREFIX)/man1/"$$m"; done
 
+clean:
+	rm $(BIN)
+	rm $(OBJ)
