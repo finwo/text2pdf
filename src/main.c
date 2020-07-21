@@ -414,6 +414,12 @@ int main(int argc, char **argv){
     font = defaultFont;
   }
 
+  // Prefix font with "/"
+  char *aTmp = calloc(strlen(font)+2, sizeof(char));
+  strcat(aTmp,"/");
+  strcat(aTmp,font);
+  font = aTmp;
+
   // Calculate lines per page
   if (lines == 0) lines = (pageHeight - 72) / vertSpace;
   if (lines < 1) lines = 1;
