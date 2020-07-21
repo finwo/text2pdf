@@ -17,16 +17,16 @@ $(NAME): $(OBJ)
 	$(CC) $(INCLUDES) $(CFLAGS) -o $@ -c $<
 
 
-install: all
+install: default
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	cp -f $(BIN) $(DESTDIR)$(PREFIX)/bin
-	cd $(DESTDIR)$(PREFIX)/bin && chmod 755 $(BIN)
+	cp -f $(NAME) $(DESTDIR)$(PREFIX)/bin
+	cd $(DESTDIR)$(PREFIX)/bin && chmod 755 $(NAME)
 	mkdir -p $(DESTDIR)$(MANPREFIX)/man1
 	for m in $(MAN); do sed "s/{{VERSION}}/$(VERSION)/g" < "$$m" > $(DESTDIR)$(MANPREFIX)/man1/"$$m"; done
 	cd $(DESTDIR)$(MANPREFIX)/man1 && chmod 644 $(MAN)
 
 uninstall:
-	for b in $(BIN); do rm -f $(DESTDIR)$(PREFIX)/bin/"$$b"; done
+	for b in $(NAME); do rm -f $(DESTDIR)$(PREFIX)/bin/"$$b"; done
 	for m in $(MAN); do rm -f $(DESTDIR)$(MANPREFIX)/man1/"$$m"; done
 
 clean:
