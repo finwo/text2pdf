@@ -1,21 +1,20 @@
 include config.mk
 
-BIN =\
-		 text2pdf
+SRC  = $(wildcard src/*.c)
+SRC += $(LIBSRC)
+OBJ  = $(SRC:.c=.o)
+MAN  = $(NAME:=.1)
 
-SRC = $(BIN:=.c)
-OBJ = $(BIN:=.o)
-MAN = $(BIN:=.1)
+default: $(NAME)
 
-all: $(BIN)
-
-$(BIN): $(LIB) $(OBJ)
+$(NAME): $(OBJ)
+	$(CC) $(INCLUDES) $(CFLAGS) $(CPPFLAGS) -o $@ $^
 
 .o:
 	$(CC) $(LDFLAGS) -o $@ $< $(LIB)
 
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+	$(CC) $(INCLUDES) $(CFLAGS) -o $@ -c $<
 
 
 install: all
@@ -31,5 +30,5 @@ uninstall:
 	for m in $(MAN); do rm -f $(DESTDIR)$(MANPREFIX)/man1/"$$m"; done
 
 clean:
-	rm $(BIN)
-	rm $(OBJ)
+	rm -f $(NAME)
+	rm -f $(OBJ)
