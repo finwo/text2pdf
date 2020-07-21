@@ -49,7 +49,7 @@ int pageObs[500];
 int curObj = 5;  /* object number being or last written */
 long locations[1000];
 
-char font[256];
+char *font = NULL;
 char *defaultFont = "Courier";
 int ISOEnc = 0;
 int doFFs = 1;
@@ -333,17 +333,17 @@ static const char *const usage[] = {
 int main(int argc, char **argv){
   int i = 1;
   int tmp, landscape = 0;
-  char *ifilename = NULL;
+  const char *ifilename = NULL;
+  const char *title     = NULL;
   int pageFormat  = -1;
 
-  strcpy(font, "/");
-  strcat(font, defaultFont);
   infile = stdin;  /* default */
 
   // Define arguments
   struct argparse_option options[] = {
     OPT_HELP(),
-    OPT_STRING( 'f', "font"     , font       , "use PostScript font (must be in standard 14, default: Courier)"      ),
+    OPT_STRING( 'T', "title"    , &title      , "title inside the document"                                           ),
+    OPT_STRING( 'f', "font"     , &font       , "use PostScript font (must be in standard 14, default: Courier)"      ),
     OPT_BIT(    'I', "iso"      , &ISOEnc    , "use ISOLatin1Encoding"                                               , NULL, 1),
     OPT_INTEGER('s', "size"     , &pointSize , "use font at given pointsize"                                         ),
     OPT_INTEGER('v', "vert"     , &vertSpace , "use given line spacing in points"                                    ),
@@ -390,6 +390,18 @@ int main(int argc, char **argv){
     ifilename = argv[i];
   }
 
+  // Open filename if given
+  if (ifilename) {
+    if (!title) {
+      title = ifilename;
+    }
+    infile = fopen(ifilename, "r");
+    if (!infile) {
+      fprintf(stderr, "%s: couldn't open input file `%s'\n", progname, ifilename);
+      exit(1);
+    }
+  }
+
   // Swap width/height for landscape
   if (landscape) {
     tmp        = pageHeight;
@@ -397,12 +409,17 @@ int main(int argc, char **argv){
     pageWidth  = tmp;
   }
 
+  // Fallback font
+  if (!font) {
+    font = defaultFont;
+  }
+
   // Calculate lines per page
   if (lines == 0) lines = (pageHeight - 72) / vertSpace;
   if (lines < 1) lines = 1;
   /* happens to give 60 as default */
 
-  WriteHeader(ifilename);
+  WriteHeader(title);
   WritePages();
   WriteRest();
 
