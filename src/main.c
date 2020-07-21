@@ -28,6 +28,8 @@ Version 1.1
 #include <string.h>
 #include <time.h>
 
+#include "argparse.h"
+
 #ifndef SEEK_SET
 #define SEEK_SET 0
 #endif
@@ -323,126 +325,79 @@ void WriteRest(){
   writestr("%%EOF\n");
 }
 
-
-void ShowHelp(){
-
-  printf("\n%s [options] [filename]\n\n", progname);
-  printf("  %s makes a 7-bit clean PDF file (version 1.1) from any input file.\n", progname);
-  printf("  It reads from standard input or a named file, and writes the PDF file\n");
-  printf("  to standard output.\n");
-  printf("\n  There are various options as follows:\n\n");
-  printf("  -h\t\tshow this message\n");
-  printf("  -f<font>\tuse PostScript <font> (must be in standard 14, default: Courier)\n");
-  printf("  -I\t\tuse ISOLatin1Encoding\n");
-  printf("  -s<size>\tuse font at given pointsize (default %d)\n", pointSize);
-  printf("  -v<dist>\tuse given line spacing (default %d points)\n", vertSpace);
-  printf("  -l<lines>\tlines per page (default 60, determined automatically\n\t\tif unspecified)\n");
-  printf("  -c<chars>\tmaximum characters per line (default 80)\n");
-  printf("  -t<spaces>\tspaces per tab character (default 8)\n");
-  printf("  -F\t\tignore formfeed characters (^L)\n");
-  printf("  -A4\t\tuse A4 paper (default Letter)\n");
-  printf("  -A3\t\tuse A3 paper (default Letter)\n");
-  printf("  -x<width>\tindependent paper width in points\n");
-  printf("  -y<height>\tindependent paper height in points\n");
-  printf("  -2\t\tformat in 2 columns\n");
-  printf("  -L\t\tlandscape mode\n");
-  printf("\n  Note that where one variable is implied by two options, the second option\n  takes precedence for that variable. (e.g. -A4 -y500)\n");
-  printf("  In landscape mode, page width and height are simply swapped over before\n  formatting, no matter how or when they were defined.\n");
-  printf("\n%s (c) Phil Smith, 1996\n", appname);
-}
+static const char *const usage[] = {
+  "text2pdf [options] [filename]",
+  NULL
+};
 
 int main(int argc, char **argv){
   int i = 1;
   int tmp, landscape = 0;
   char *ifilename = NULL;
+  int pageFormat  = -1;
 
   strcpy(font, "/");
   strcat(font, defaultFont);
   infile = stdin;  /* default */
 
-  while (i < argc) {
-    if (*argv[i] != '-') {  /* input filename */
-      ifilename = argv[i];
-      if (!(infile = fopen(ifilename, "r"))) {
-	fprintf(stderr, "%s: couldn't open input file `%s'\n", progname, ifilename);
-	exit(0);
-      }
-    } else {
-      switch (*++argv[i]) {
-      case 'h':
-	ShowHelp();
-	exit(0);
-      case 'f':
-	strcpy(font, "/");
-	strcat(font, ++argv[i]);
-	break;
-      case 'I':
-	ISOEnc = 1;
-	break;
-      case 'F':
-	doFFs = 0;
-	break;
-      case 's':
-	pointSize = atoi(++argv[i]);
-	if (pointSize < 1) pointSize = 1;
-	break;
-      case 'v':
-	vertSpace = atoi(++argv[i]);
-	if (vertSpace < 1) vertSpace = 1;
-	break;
-      case 'l':
-	lines = atoi(++argv[i]);
-	if (lines < 1) lines = 1;
-	break;
-      case 'c':
-	cols = atoi(++argv[i]);
-	if (cols < 4) cols = 4;
-	break;
-      case '2':
-	columns = 2;
-	break;
-      case 't':
-	tab = atoi(++argv[i]);
-	if (tab < 1) tab = 1;
-	break;
-      case 'A':
-	switch (*++argv[i]) {
-	case '3':
-	  pageWidth = 842;
-	  pageHeight = 1190;
-	  break;
-	case '4':
-	  pageWidth = 595;
-	  pageHeight = 842;
-	  break;
-	default:
-	  fprintf(stderr, "%s: ignoring unknown paper size: A%s\n", progname, argv[i]);
-	}
-	break;
-      case 'x':
-	pageWidth = atoi(++argv[i]);
-	if (pageWidth < 72) pageWidth = 72;
-	break;
-      case 'y':
-	pageHeight = atoi(++argv[i]);
-	if (pageHeight < 72) pageHeight = 72;
-	break;
-      case 'L':
-	landscape = 1;
-	break;
-      default:
-	fprintf(stderr, "%s: ignoring invalid switch: -%s\n", progname, argv[i]);
-      }
-    }
-    i++;
+  // Define arguments
+  struct argparse_option options[] = {
+    OPT_HELP(),
+    OPT_STRING( 'f', "font"     , font       , "use PostScript font (must be in standard 14, default: Courier)"      ),
+    OPT_BIT(    'I', "iso"      , &ISOEnc    , "use ISOLatin1Encoding"                                               , NULL, 1),
+    OPT_INTEGER('s', "size"     , &pointSize , "use font at given pointsize"                                         ),
+    OPT_INTEGER('v', "vert"     , &vertSpace , "use given line spacing in points"                                    ),
+    OPT_INTEGER('l', "lines"    , &lines     , "lines per page (default 60, determined automatically if unspecified)"),
+    OPT_INTEGER('c', "chars"    , &cols      , "maximum characters per line (default: 80)"                           ),
+    OPT_INTEGER('t', "tab"      , &tab       , "spaces per tab character (default: 8)"                               ),
+    OPT_BIT(    'F', "ff"       , &doFFs     , "ignore formfeed characters (^L)"                                     , NULL, 2),
+    OPT_INTEGER('C', "columns"  , &columns   , "columns to format the page in"                                       ),
+    OPT_INTEGER('x', "width"    , &pageWidth , "page width in points"                                                ),
+    OPT_INTEGER('y', "height"   , &pageHeight, "page height in points"                                               ),
+    OPT_INTEGER('A', NULL       , &pageFormat, "use A <int> size paper"                                              ),
+    OPT_BIT(    'L', "landscape", &landscape , "landscape mode"                                                      , NULL, 1),
+    OPT_END(),
+  };
+
+  // Parse arguments
+  struct argparse argparse;
+  argparse_init(&argparse, options, usage, 0);
+  argparse_describe(&argparse,
+      "\ntext2pdf makes a 7-bit clean PDF file (version 1.1) from any input file. It reads from standard input or a named file, and writes the PDF file to standard output.",
+      "\ntext2pdf v1.1 (c) Phil Smith, 1996"
+  );
+  argc = argparse_parse(&argparse, argc, argv);
+
+  // Handle inverted formfeed
+  if (doFFs & 2) {
+    doFFs = 0;
   }
 
+  // Handle pageformat
+  switch(pageFormat) {
+    case 3:
+      pageWidth  = 842;
+      pageHeight = 1190;
+      break;
+    case 4:
+      pageWidth  = 595;
+      pageHeight = 842;
+      break;
+  }
+
+  // Parse leftovers
+  for(int i = 0; i<argc; i++) {
+    ifilename = argv[i];
+  }
+
+  // Swap width/height for landscape
   if (landscape) {
-    tmp = pageHeight;
+    tmp        = pageHeight;
     pageHeight = pageWidth;
-    pageWidth = tmp;
+    pageWidth  = tmp;
   }
 
+  // Calculate lines per page
   if (lines == 0) lines = (pageHeight - 72) / vertSpace;
   if (lines < 1) lines = 1;
   /* happens to give 60 as default */
